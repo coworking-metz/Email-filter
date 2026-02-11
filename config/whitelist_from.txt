@@ -1,0 +1,9 @@
+# Whitelist for From addresses (one per line)
+# Lines starting with # are comments
+no-reply@accounts.google.com
+noreply@google.com
+no-reply@google.com
+noreply@conversations-reply.brevo.com
+no-reply@amazon.fr
+*@amazon.fr
+*@bliiida.fr

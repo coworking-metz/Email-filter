@@ -1,0 +1,5 @@
+# Whitelist for To/CC addresses (one per line)
+# Lines starting with # are comments
+coworkingmetz@gmail.com
+coworking.metz@gmail.com
+contact@coworking-metz.fr
