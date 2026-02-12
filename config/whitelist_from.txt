@@ -7,3 +7,7 @@ noreply@conversations-reply.brevo.com
 no-reply@amazon.fr
 *@amazon.fr
 *@bliiida.fr
+confirm@mailchimp.com
+no-reply@twitch.tv
+account@twitch.tv
+no_reply@communications.paypal.com
