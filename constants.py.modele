@@ -4,6 +4,7 @@ USER = 'contact@coworking-metz.fr'
 PASSWORD = ''
 JUNK_FOLDER = 'INBOX.INBOX.Junk'
 NEWSLETTERS_FOLDER = 'INBOX.Newsletters'
+ARCHIVE_FOLDER = 'INBOX.archive'
 
 # Domain to skip in From field
 SKIP_FROM_DOMAIN = 'coworking-metz.fr'

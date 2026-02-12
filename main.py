@@ -8,7 +8,9 @@ from functions.imap_utils import get_imap_connection, get_last_emails, ensure_ne
 from functions.config import load_whitelist, add_to_whitelist, load_blacklist, add_to_blacklist
 from functions.email_processing import parse_email_headers
 from functions.spam_detection import is_ovh_spam, is_spamassassin_spam, is_whitelisted, is_blacklisted, is_spam_indicator
-from constants import SERVER,JUNK_FOLDER, NEWSLETTERS_FOLDER, SKIP_FROM_DOMAIN
+from functions.blacklist import process_blacklist_folder
+from constants import SERVER,JUNK_FOLDER, ARCHIVE_FOLDER, NEWSLETTERS_FOLDER, SKIP_FROM_DOMAIN
+from functions.brevo import is_brevo_email
 
 def process_email(conn, num, msg_obj, WHITELISTED_FROM, VALID_TO_CC, BLACKLISTED_FROM, yes_to_all, checked, msg_id, total_processed):
     """Process a single email and determine if it should be moved"""
@@ -20,9 +22,8 @@ def process_email(conn, num, msg_obj, WHITELISTED_FROM, VALID_TO_CC, BLACKLISTED
     subject = email_info['subject']
     date = email_info['date']
 
-    # Skip emails from our own domain
-    if from_addr and from_addr.endswith(f'@{SKIP_FROM_DOMAIN}'):
-        return None, "Skipped (own domain)", None
+    if is_brevo_email(msg_obj):
+        return ARCHIVE_FOLDER, "📩 Brevo email to archive", email_info
 
     # Check for blacklisted senders first
     if from_addr and is_blacklisted(from_addr, BLACKLISTED_FROM):
@@ -70,10 +71,18 @@ def main():
                         help='Automatically move all suspicious emails without prompting')
     parser.add_argument('--last-emails', '-l', type=int, default=0,
                         help='Only process the last N most recent emails (0 to disable)')
+    parser.add_argument('--debug', '-d', action='store_true',
+                        help='Enable debug mode to show all email subjects')
+    parser.add_argument('--email-id', '-e', type=str, default=None,
+                        help='Process only this specific email ID')
     args = parser.parse_args()
+
+
 
     yes_to_all = args.yes_to_all
     last_emails_count = args.last_emails
+    debug_mode = args.debug  # Add debug mode flag
+
 
     # Validate last_emails_count
     if last_emails_count < 0:
@@ -87,6 +96,7 @@ def main():
     BLACKLISTED_FROM = load_blacklist('blacklist.txt')
     print()
 
+    # Process INBOX.Blacklist folder first
     if yes_to_all:
         print("🚀 Running in AUTO MODE (--yes-to-all)")
         print("All suspicious emails will be moved automatically\n")
@@ -98,26 +108,39 @@ def main():
     # Ensure newsletters folder exists
     ensure_newsletters_folder_exists(conn)
 
+    # Process blacklist folder
+    added_to_blacklist = process_blacklist_folder(conn, 'blacklist.txt', BLACKLISTED_FROM)
     # Select INBOX
     conn.select('INBOX')
 
     # Get message IDs based on mode
-    if last_emails_count > 0:
-        print(f"Fetching last {last_emails_count} most recent emails...")
-        msg_ids = get_last_emails(conn, last_emails_count)
-        print(f"Found {len(msg_ids)} messages (last {last_emails_count} most recent)")
+    if args.email_id:
+        print(f"Searching for specific email ID: {args.email_id}...")
+        # Search for the specific email ID
+        typ, data = conn.search(None, f'(HEADER "X-Ovh-Tracer-Id" "{args.email_id}")')
+        if typ != 'OK' or not data[0]:
+            print(f"Error: Email with ID {args.email_id} not found")
+            return
+        msg_ids = data[0].split()
+        print(f"Found {len(msg_ids)} message(s) matching ID {args.email_id}")
     else:
-        print("Fetching all messages...")
-        try:
-            typ, data = conn.sort('REVERSE DATE', 'UTF-8', 'ALL')
-            msg_ids = data[0].split()
-            print(f"Found {len(msg_ids)} messages in INBOX (sorted by date, newest first)")
-        except:
-            print("Server doesn't support SORT, using unsorted list...")
-            typ, data = conn.search(None, 'ALL')
-            msg_ids = data[0].split()
-            msg_ids.reverse()
-            print(f"Found {len(msg_ids)} messages in INBOX")
+        if last_emails_count > 0:
+            print(f"Fetching last {last_emails_count} most recent emails...")
+            msg_ids = get_last_emails(conn, last_emails_count)
+            print(f"Found {len(msg_ids)} messages (last {last_emails_count} most recent)")
+        else:
+            print("Fetching all messages...")
+            try:
+                typ, data = conn.sort('REVERSE DATE', 'UTF-8', 'ALL')
+                msg_ids = data[0].split()
+                print(f"Found {len(msg_ids)} messages in INBOX (sorted by date, newest first)")
+            except:
+                print("Server doesn't support SORT, using unsorted list...")
+                typ, data = conn.search(None, 'ALL')
+                msg_ids = data[0].split()
+                msg_ids.reverse()
+                print(f"Found {len(msg_ids)} messages in INBOX")
+
 
     if not yes_to_all:
         print("="*80)
@@ -129,6 +152,7 @@ def main():
         print("  b (blacklist sender and move to junk)")
         print("Press Enter for default (Yes)")
         print("Tip: Use --yes-to-all or -y to auto-move all suspicious emails")
+        print("     Use --debug or -d to enable debug mode")
         print("="*80 + "\n")
     else:
         print("="*80 + "\n")
@@ -136,6 +160,7 @@ def main():
     # Initialize counters
     moved_junk = 0
     moved_newsletters = 0
+    moved_archive = 0
     skipped = 0
     failed = 0
     checked = 0
@@ -144,7 +169,7 @@ def main():
     errors = 0
     total_processed = 0
 
-    # Process each email
+     # Process each email
     for i, num in enumerate(msg_ids):
         try:
             # Convert message ID to string if it's bytes
@@ -160,6 +185,7 @@ def main():
             if '\\Deleted' in flags_str:
                 continue
 
+
             # Fetch full message
             typ, msg_data = conn.fetch(num, '(RFC822)')
             if typ != 'OK' or not msg_data[0]:
@@ -168,11 +194,23 @@ def main():
             raw_email = msg_data[0][1]
             msg_obj = email.message_from_bytes(raw_email, policy=policy.default)
 
+            # Parse email headers for debug mode
+            email_info = parse_email_headers(msg_obj)
+
+            # Show subject in debug mode
+            if debug_mode:
+                print(f"\nProcessing email {i+1}/{len(msg_ids)} (ID: {msg_id})")
+                print(f"Subject: {email_info['subject'][:100]}")
+                print(f"From:    {email_info['from_addr'][:70] if email_info['from_addr'] else 'Unknown'}")
+                print(f"Date:    {email_info['date']}")
+                print("-" * 80)
+
             # Process the email
             destination, reason_text, email_info = process_email(
                 conn, num, msg_obj, WHITELISTED_FROM, VALID_TO_CC, BLACKLISTED_FROM,
                 yes_to_all, checked, msg_id, total_processed
             )
+
 
             # Only process if we have a destination
             if destination:
@@ -240,14 +278,19 @@ def main():
                             # Mark as deleted in INBOX
                             conn.store(num, '+FLAGS', '\\Deleted')
 
-                            if destination == NEWSLETTERS_FOLDER:
-                                moved_newsletters += 1
+                            if destination == ARCHIVE_FOLDER:
+                                moved_archive += 1
                                 if not yes_to_all:
-                                    print("✓ Moved to Newsletters\n")
+                                    print("✓ Moved to Archive\n")
                             else:
-                                moved_junk += 1
-                                if not yes_to_all:
-                                    print("✓ Moved to Junk\n")
+                                if destination == NEWSLETTERS_FOLDER:
+                                    moved_newsletters += 1
+                                    if not yes_to_all:
+                                        print("✓ Moved to Newsletters\n")
+                                else:
+                                    moved_junk += 1
+                                    if not yes_to_all:
+                                        print("✓ Moved to Junk\n")
                         else:
                             failed += 1
                             if not yes_to_all:
@@ -270,16 +313,18 @@ def main():
             continue
 
     # Expunge to permanently delete from INBOX
-    if moved_junk > 0 or moved_newsletters > 0:
+    if moved_junk > 0 or moved_newsletters > 0 or moved_archive > 0:
         print("\nExpunging deleted messages...")
         conn.expunge()
 
     print(f"\n{'='*80}")
     print("Summary:")
+    print(f"  Mode: {'Debug' if debug_mode else 'Normal'}")
     print(f"  Total messages scanned: {len(msg_ids)}")
     print(f"  Suspicious emails found: {checked}")
     print(f"  Moved to Junk: {moved_junk}")
     print(f"  Moved to Newsletters: {moved_newsletters}")
+    print(f"  Moved to Archive: {moved_archive}")
     print(f"  Kept in inbox: {skipped}")
     if whitelisted > 0:
         print(f"  Added to whitelist: {whitelisted}")

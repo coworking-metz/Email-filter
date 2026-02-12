@@ -5,6 +5,7 @@ import fnmatch
 from email import policy
 from constants import SKIP_FROM_DOMAIN
 
+
 def decode_mime_words(value):
     """Decode MIME encoded-word strings safely"""
     if not value:
