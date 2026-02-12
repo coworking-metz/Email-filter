@@ -17,8 +17,8 @@ Ce projet contient des scripts Python pour filtrer automatiquement les emails d'
   - **Archive** pour les emails spécifiques (comme ceux de Brevo)
 
 - **Gestion des listes** :
-  - Ajout automatique aux listes noire/blanche
-  - Configuration via fichiers texte
+  - Ajout automatique à la  liste noire de tous les expéditeurs des emails qui sont ganés dans le dossier Blacklist
+  - Configuration via fichiers texte des autres listes
 
 ## Configuration
 
@@ -51,7 +51,7 @@ Ce projet contient des scripts Python pour filtrer automatiquement les emails d'
 ### Exécution
 
 ```bash
-# Filtrer tous les emails (mode interactif)
+# Filtrer tous les emails (mode interactif: validder cahque décision un mail après l'autres, ou whitelist si besoin)
 ./junk.sh
 
 # Filtrer les 50 derniers emails (mode automatique)
@@ -65,9 +65,9 @@ Ce projet contient des scripts Python pour filtrer automatiquement les emails d'
 
 | Option | Description |
 |--------|-------------|
-| `-l N` | Filtrer les N derniers emails |
-| `-y` | Mode automatique (sans confirmation) |
-| `-e ID` | Filtrer un email spécifique par ID OVH |
+| `-l N` ou `--last-emails N` | Filtrer les N derniers emails |
+| `-y` ou `--yes-to-all`| Mode automatique (sans confirmation) |
+| `-e ID` ou `--email-id ID` | Filtrer un email spécifique par ID OVH |
 
 ## Fonctionnement
 
@@ -83,21 +83,7 @@ Ce projet contient des scripts Python pour filtrer automatiquement les emails d'
    - Le dossier Newsletters
    - Le dossier Archive
    - Ou laissé dans la boîte de réception
-
-## Personnalisation
-
-Vous pouvez adapter le filtrage en modifiant :
-- `constants.py` pour les paramètres de connexion et dossiers
-- Les fichiers de configuration dans le dossier `config`
-- Les seuils de détection dans `spam_detection.py`
-
-## Contribution
-
-Les contributions sont les bienvenues ! N'hésitez pas à ouvrir des issues ou des pull requests.
-
+   
 ## Licence
 
 [MIT](LICENSE)
-```
-
-Ce README explique clairement le but du projet, comment l'installer et l'utiliser, ainsi que les fonctionnalités principales. Vous pouvez bien sûr l'adapter selon vos besoins spécifiques.
