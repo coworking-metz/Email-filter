@@ -1,0 +1,7 @@
+# Email filter blacklist
+# Add email addresses or patterns to automatically mark as spam
+# Format: full@email.com or *@domain.tld
+# Example:
+# spam@example.com
+# *@spamdomain.com
+*@freebe.me

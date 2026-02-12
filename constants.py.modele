@@ -1,0 +1,15 @@
+# Configuration constants
+SERVER = 'ssl0.ovh.net'
+USER = 'contact@coworking-metz.fr'
+PASSWORD = ''
+JUNK_FOLDER = 'INBOX.INBOX.Junk'
+NEWSLETTERS_FOLDER = 'INBOX.Newsletters'
+
+# Domain to skip in From field
+SKIP_FROM_DOMAIN = 'coworking-metz.fr'
+
+# Config directory
+CONFIG_DIR = 'config'
+
+# Spam score threshold
+SPAM_SCORE_THRESHOLD = 80
