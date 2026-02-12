@@ -48,6 +48,8 @@ Ce projet contient des scripts Python pour filtrer automatiquement les emails d'
    pip install -r requirements.txt
    ```
 
+3. Copier le fichier `constants.py.modele` en `constants.py` et renseigner les coordonnées de la boîte mail sur laquelle les filtres doivent agir
+
 ### Exécution
 
 ```bash
