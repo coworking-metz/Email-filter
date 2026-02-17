@@ -35,7 +35,7 @@ def process_blacklist_folder(conn, blacklist_file, blacklist_set):
         for num in msg_ids:
             try:
                 # Fetch the email
-                typ, msg_data = conn.fetch(num, '(RFC822)')
+                typ, msg_data = conn.fetch(num, '(BODY.PEEK[])')
                 if typ != 'OK' or not msg_data[0]:
                     continue
 

@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
 LOCKFILE="/tmp/move_to_junk.lock"
-SCRIPT="/home/coworking/email_filter/main.py"
+ROOT="/home/coworking/email_filter/"
+SCRIPT="main.py"
+
+cd $ROOT
 
 LIMIT=""
 

@@ -187,7 +187,7 @@ def main():
 
 
             # Fetch full message
-            typ, msg_data = conn.fetch(num, '(RFC822)')
+            typ, msg_data = conn.fetch(num, '(BODY.PEEK[])')
             if typ != 'OK' or not msg_data[0]:
                 continue
 
